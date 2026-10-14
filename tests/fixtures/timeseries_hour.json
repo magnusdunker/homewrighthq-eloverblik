@@ -1,0 +1,427 @@
+{
+ "result": [
+  {
+   "MyEnergyData_MarketDocument": {
+    "mRID": "x",
+    "createdDateTime": "2026-10-11T06:00:00Z",
+    "sender_MarketParticipant.name": "",
+    "sender_MarketParticipant.mRID": {
+     "codingScheme": null,
+     "name": null
+    },
+    "period.timeInterval": {
+     "start": "2026-10-07T22:00:00Z",
+     "end": "2026-10-10T22:00:00Z"
+    },
+    "TimeSeries": [
+     {
+      "mRID": "571313100000000001",
+      "businessType": "A04",
+      "curveType": "A01",
+      "measurement_Unit.name": "KWH",
+      "MarketEvaluationPoint": {
+       "mRID": {
+        "codingScheme": "A10",
+        "name": "571313100000000001"
+       }
+      },
+      "Period": [
+       {
+        "resolution": "PT1H",
+        "timeInterval": {
+         "start": "2026-10-07T22:00:00Z",
+         "end": "2026-10-08T22:00:00Z"
+        },
+        "Point": [
+         {
+          "position": "1",
+          "out_Quantity.quantity": "0.200",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "2",
+          "out_Quantity.quantity": "0.250",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "3",
+          "out_Quantity.quantity": "0.300",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "4",
+          "out_Quantity.quantity": "0.350",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "5",
+          "out_Quantity.quantity": "0.400",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "6",
+          "out_Quantity.quantity": "0.450",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "7",
+          "out_Quantity.quantity": "0.500",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "8",
+          "out_Quantity.quantity": "0.550",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "9",
+          "out_Quantity.quantity": "0.600",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "10",
+          "out_Quantity.quantity": "0.650",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "11",
+          "out_Quantity.quantity": "0.700",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "12",
+          "out_Quantity.quantity": "0.750",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "13",
+          "out_Quantity.quantity": "0.800",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "14",
+          "out_Quantity.quantity": "0.850",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "15",
+          "out_Quantity.quantity": "0.900",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "16",
+          "out_Quantity.quantity": "0.950",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "17",
+          "out_Quantity.quantity": "1.000",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "18",
+          "out_Quantity.quantity": "1.050",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "19",
+          "out_Quantity.quantity": "1.100",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "20",
+          "out_Quantity.quantity": "1.150",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "21",
+          "out_Quantity.quantity": "1.200",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "22",
+          "out_Quantity.quantity": "1.250",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "23",
+          "out_Quantity.quantity": "1.300",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "24",
+          "out_Quantity.quantity": "1.350",
+          "out_Quantity.quality": "A04"
+         }
+        ]
+       },
+       {
+        "resolution": "PT1H",
+        "timeInterval": {
+         "start": "2026-10-08T22:00:00Z",
+         "end": "2026-10-09T22:00:00Z"
+        },
+        "Point": [
+         {
+          "position": "1",
+          "out_Quantity.quantity": "0.300",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "2",
+          "out_Quantity.quantity": "0.350",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "3",
+          "out_Quantity.quantity": "0.400",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "4",
+          "out_Quantity.quantity": "0.450",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "5",
+          "out_Quantity.quantity": "0.500",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "6",
+          "out_Quantity.quantity": "0.550",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "7",
+          "out_Quantity.quantity": "0.600",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "8",
+          "out_Quantity.quantity": "0.650",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "9",
+          "out_Quantity.quantity": "0.700",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "10",
+          "out_Quantity.quantity": "0.750",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "11",
+          "out_Quantity.quantity": "0.800",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "12",
+          "out_Quantity.quantity": "0.850",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "13",
+          "out_Quantity.quantity": "0.900",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "14",
+          "out_Quantity.quantity": "0.950",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "15",
+          "out_Quantity.quantity": "1.000",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "16",
+          "out_Quantity.quantity": "1.050",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "17",
+          "out_Quantity.quantity": "1.100",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "18",
+          "out_Quantity.quantity": "1.150",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "19",
+          "out_Quantity.quantity": "1.200",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "20",
+          "out_Quantity.quantity": "1.250",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "21",
+          "out_Quantity.quantity": "1.300",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "22",
+          "out_Quantity.quantity": "1.350",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "23",
+          "out_Quantity.quantity": "1.400",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "24",
+          "out_Quantity.quantity": "1.450",
+          "out_Quantity.quality": "A04"
+         }
+        ]
+       },
+       {
+        "resolution": "PT1H",
+        "timeInterval": {
+         "start": "2026-10-09T22:00:00Z",
+         "end": "2026-10-10T22:00:00Z"
+        },
+        "Point": [
+         {
+          "position": "1",
+          "out_Quantity.quantity": "0.400",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "2",
+          "out_Quantity.quantity": "0.450",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "3",
+          "out_Quantity.quantity": "0.500",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "4",
+          "out_Quantity.quantity": "0.550",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "5",
+          "out_Quantity.quantity": "0.600",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "6",
+          "out_Quantity.quantity": "0.650",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "7",
+          "out_Quantity.quantity": "0.700",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "8",
+          "out_Quantity.quantity": "0.750",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "9",
+          "out_Quantity.quantity": "0.800",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "10",
+          "out_Quantity.quantity": "0.850",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "11",
+          "out_Quantity.quantity": "0.900",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "12",
+          "out_Quantity.quantity": "0.950",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "13",
+          "out_Quantity.quantity": "1.000",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "14",
+          "out_Quantity.quantity": "1.050",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "15",
+          "out_Quantity.quantity": "1.100",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "16",
+          "out_Quantity.quantity": "1.150",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "17",
+          "out_Quantity.quantity": "1.200",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "18",
+          "out_Quantity.quantity": "1.250",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "19",
+          "out_Quantity.quantity": "1.300",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "20",
+          "out_Quantity.quantity": "1.350",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "21",
+          "out_Quantity.quantity": "1.400",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "22",
+          "out_Quantity.quantity": "1.450",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "23",
+          "out_Quantity.quantity": "1.500",
+          "out_Quantity.quality": "A04"
+         },
+         {
+          "position": "24",
+          "out_Quantity.quantity": "1.550",
+          "out_Quantity.quality": "A04"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "success": true,
+   "errorCode": 10000,
+   "errorText": "NoError",
+   "id": "571313100000000001",
+   "stackTrace": null
+  }
+ ]
+}

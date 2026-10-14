@@ -1,0 +1,29 @@
+{
+ "result": [
+  {
+   "streetCode": "1234",
+   "streetName": "Testvej",
+   "buildingNumber": "1",
+   "floorId": null,
+   "roomId": null,
+   "citySubDivisionName": null,
+   "municipalityCode": "101",
+   "locationDescription": null,
+   "settlementMethod": "D01",
+   "meterReadingOccurrence": "PT15M",
+   "firstConsumerPartyName": "Test Testesen",
+   "secondConsumerPartyName": null,
+   "meterNumber": "12345678",
+   "consumerStartDate": "2020-01-01T00:00:00.000Z",
+   "meteringPointId": "571313100000000001",
+   "typeOfMP": "E17",
+   "balanceSupplierName": "Testel",
+   "postcode": "2100",
+   "cityName": "København Ø",
+   "hasRelation": true,
+   "consumerCVR": null,
+   "dataAccessCVR": null,
+   "childMeteringPoints": []
+  }
+ ]
+}

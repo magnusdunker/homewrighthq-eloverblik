@@ -1,0 +1,34 @@
+[package]
+name = "thehome-eloverblik"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Eloverblik som ekstern integration til TheHome"
+publish = false
+
+[[bin]]
+name = "eloverblik_ext"
+path = "src/main.rs"
+
+[dependencies]
+thehome-plugin = { git = "https://github.com/magnusdunker/thehome-example-integration-rust", rev = "50825762517f5d34318f423b3df8e3f35fa73102" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+anyhow = "1"
+thiserror = "2"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
+chrono-tz = "0.10"
+
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "io-util"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1
