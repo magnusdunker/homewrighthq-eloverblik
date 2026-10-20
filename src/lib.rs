@@ -1,9 +1,10 @@
 //! Meter data from Energinet's Eloverblik as an external integration for
-//! TheHome.
+//! Homewright.
 //!
 //! Data arrives about a day late, so the sensors describe yesterday and a
-//! running total. `api` is the same as in TheHome's built-in `eloverblik`;
-//! this file connects it to TheHome through the `thehome-plugin` SDK.
+//! running total, and the hours go into a long-term statistic of their own
+//! for the Energi page. `api` started as Homewright's built-in `eloverblik`;
+//! this file connects it to Homewright through the `thehome-plugin` SDK.
 
 pub mod api;
 
@@ -12,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration as StdDuration, Instant};
 
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
 use thehome_plugin::{async_trait, json, Entry, Error, Flow, FlowReply, Host, Integration, Map, Value};
 
 pub use api::{ApiError, Client, MeteringPoint, BASE_URL, TZ};
@@ -20,8 +21,12 @@ pub use api::{ApiError, Client, MeteringPoint, BASE_URL, TZ};
 pub const DOMAIN: &str = "eloverblik_ext";
 const POLL: StdDuration = StdDuration::from_secs(3 * 3600);
 const DAYS_BACK: i64 = 7;
+/// History fetched the first time, for the Energi page.
+const BACKFILL_DAYS: i64 = 365;
+/// Days per request while fetching history.
+const BACKFILL_CHUNK: i64 = 92;
 
-/// Logging to TheHome's log through stderr.
+/// Logging to Homewright's log through stderr.
 #[doc(hidden)]
 pub fn emit(level: &str, message: String) {
     thehome_plugin::log(level, message);
@@ -177,13 +182,23 @@ impl Integration for Eloverblik {
             };
             let yesterday = add("yesterday", "Forbrug i går", "total").await?;
             let total = add("total", "Samlet forbrug", "total_increasing").await?;
-            meters.push(Meter { id: p.id.clone(), yesterday, total, store: host.data_dir().join(format!("total-{entry_id}-{}.json", p.id)) });
+            let name = if p.address.is_empty() { format!("Eloverblik {}", p.id) } else { format!("Eloverblik {}", p.address) };
+            meters.push(Meter {
+                id: p.id.clone(),
+                name,
+                yesterday,
+                total,
+                store: host.data_dir().join(format!("total-{entry_id}-{}.json", p.id)),
+                history: host.data_dir().join(format!("hours-{entry_id}-{}.json", p.id)),
+            });
         }
 
         let host = host.clone();
         let id = entry_id.clone();
         let task = tokio::spawn(async move {
             let mut access = Some((access, Instant::now()));
+            // The statistics are imported once per start, in case Homewright lost them.
+            let mut imported = false;
             loop {
                 // Data access tokens live 24 hours; renew after 20.
                 if access.as_ref().is_some_and(|(_, at)| at.elapsed() > StdDuration::from_secs(20 * 3600)) {
@@ -207,8 +222,9 @@ impl Integration for Eloverblik {
                     }
                 }
                 if let Some((a, _)) = &access {
-                    match update(&host, &client, a, &meters, Utc::now()).await {
+                    match update(&host, &client, a, &meters, Utc::now(), !imported).await {
                         Ok(()) => {
+                            imported = true;
                             let _ = host.delete_issue(&id, "auth").await;
                         }
                         Err(ApiError::Auth) => access = None,
@@ -242,30 +258,89 @@ impl Integration for Eloverblik {
 
 struct Meter {
     id: String,
+    /// The statistic's name on the Energi page.
+    name: String,
     yesterday: Option<String>,
     total: Option<String>,
     /// Where the running total is kept between restarts.
     store: PathBuf,
+    /// Where the hours behind the statistic are kept.
+    history: PathBuf,
 }
 
-fn load_total(path: &PathBuf) -> api::Total {
+/// The statistic a metering point's hours go into.
+pub fn statistic_id(metering_point: &str) -> String {
+    format!("{DOMAIN}:{metering_point}")
+}
+
+fn load<T: serde::de::DeserializeOwned + Default>(path: &PathBuf) -> T {
     std::fs::read_to_string(path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
 }
 
-fn save_total(path: &PathBuf, total: &api::Total) -> Result<(), String> {
+fn save<T: serde::Serialize>(path: &PathBuf, value: &T) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
-    let bytes = serde_json::to_vec(total).map_err(|e| e.to_string())?;
+    let bytes = serde_json::to_vec(value).map_err(|e| e.to_string())?;
     std::fs::write(path, bytes).map_err(|e| e.to_string())
 }
 
-async fn update(host: &Host, client: &Client, access: &str, meters: &[Meter], now: DateTime<Utc>) -> Result<(), ApiError> {
+/// The year before the last week, for meters that have not had it yet. A
+/// failed request is tried again at the next poll.
+async fn backfill(client: &Client, access: &str, meters: &[Meter], histories: &mut [api::History], today: NaiveDate) -> Result<bool, ApiError> {
+    let ids: Vec<String> = meters.iter().zip(histories.iter()).filter(|(_, h)| !h.backfilled).map(|(m, _)| m.id.clone()).collect();
+    if ids.is_empty() {
+        return Ok(false);
+    }
+    let end = today - Duration::days(DAYS_BACK);
+    let mut from = today - Duration::days(BACKFILL_DAYS);
+    while from < end {
+        let to = (from + Duration::days(BACKFILL_CHUNK)).min(end);
+        let data = client.hourly(access, &ids, from, to).await?;
+        for (m, h) in meters.iter().zip(histories.iter_mut()) {
+            if let Some(series) = data.get(&m.id).filter(|_| ids.contains(&m.id)) {
+                h.absorb(series);
+            }
+        }
+        from = to;
+    }
+    for h in histories.iter_mut() {
+        h.backfilled = true;
+    }
+    info!("hentede et års timer for {} målepunkter", ids.len());
+    Ok(true)
+}
+
+async fn update(host: &Host, client: &Client, access: &str, meters: &[Meter], now: DateTime<Utc>, import_all: bool) -> Result<(), ApiError> {
     let today = now.with_timezone(&TZ).date_naive();
     let from = today - Duration::days(DAYS_BACK);
     let ids: Vec<String> = meters.iter().map(|m| m.id.clone()).collect();
     let data = client.hourly(access, &ids, from, today).await?;
-    for m in meters {
+    let mut histories: Vec<api::History> = meters.iter().map(|m| load(&m.history)).collect();
+    let backfilled = match backfill(client, access, meters, &mut histories, today).await {
+        Ok(b) => b,
+        Err(ApiError::Auth) => return Err(ApiError::Auth),
+        Err(e) => {
+            warn!("historikken kunne ikke hentes, prøver igen senere: {e}");
+            false
+        }
+    };
+    for (m, history) in meters.iter().zip(histories.iter_mut()) {
+        let new_hours = data.get(&m.id).is_some_and(|s| history.absorb(s));
+        if new_hours || backfilled {
+            if let Err(e) = save(&m.history, history) {
+                warn!("kunne ikke gemme timerne: {e}");
+            }
+        }
+        if (new_hours || backfilled || import_all) && !history.hours.is_empty() {
+            let params = json!({
+                "statistic_id": statistic_id(&m.id), "name": m.name, "unit_of_measurement": "kWh",
+                "has_sum": true, "has_mean": false, "stats": history.rows(),
+            });
+            if let Err(e) = host.request("statistics/import", params).await {
+                warn!("statistikken kunne ikke gemmes: {e}");
+            }
+        }
         let Some(series) = data.get(&m.id) else { continue };
         let yday = today.pred_opt().unwrap_or(today);
         if let Some(id) = &m.yesterday {
@@ -288,9 +363,9 @@ async fn update(host: &Host, client: &Client, access: &str, meters: &[Meter], no
             }
         }
         if let Some(id) = &m.total {
-            let mut total = load_total(&m.store);
+            let mut total: api::Total = load(&m.store);
             if total.absorb(series) > 0 {
-                if let Err(e) = save_total(&m.store, &total) {
+                if let Err(e) = save(&m.store, &total) {
                     warn!("kunne ikke gemme total: {e}");
                 }
             }

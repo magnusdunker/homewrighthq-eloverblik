@@ -1,5 +1,5 @@
-//! Energinet's Eloverblik customer API and the time series math. The same
-//! as in TheHome's built-in `eloverblik`.
+//! Energinet's Eloverblik customer API and the time series math. It started
+//! as Homewright's built-in `eloverblik`.
 //!
 //! A refresh token (made by the user on eloverblik.dk, valid one year) is
 //! exchanged for a data access token (valid 24 hours), which is used to list
@@ -45,7 +45,7 @@ pub struct Client {
 impl Client {
     pub fn new(base: &str) -> Self {
         let http = reqwest::Client::builder()
-            .user_agent(concat!("TheHome-eloverblik/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("Homewright-eloverblik/", env!("CARGO_PKG_VERSION")))
             .timeout(StdDuration::from_secs(120))
             .build()
             .unwrap_or_default();
@@ -219,4 +219,52 @@ pub fn day_total(series: &Series, day: NaiveDate) -> Option<(f64, DayHours)> {
         return None;
     }
     Some((hours.iter().map(|(_, v)| v).sum(), hours))
+}
+
+/// Every whole day of hourly data seen so far, for the long-term statistics
+/// that the Energi page uses. Unlike [`Total`] it takes corrections and days
+/// that come in late.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct History {
+    pub hours: Series,
+    /// True once the year before the integration was set up is fetched.
+    #[serde(default)]
+    pub backfilled: bool,
+}
+
+impl History {
+    /// Take the whole local days in `series`. True if an hour is new or changed.
+    pub fn absorb(&mut self, series: &Series) -> bool {
+        let mut by_day: BTreeMap<NaiveDate, Vec<(DateTime<Utc>, f64)>> = BTreeMap::new();
+        for (t, v) in series {
+            by_day.entry(t.with_timezone(&TZ).date_naive()).or_default().push((*t, *v));
+        }
+        let mut changed = false;
+        for (day, hours) in by_day {
+            if hours.len() < day_hours(day) {
+                continue;
+            }
+            for (t, v) in hours {
+                if self.hours.get(&t).is_none_or(|old| (old - v).abs() > 1e-9) {
+                    self.hours.insert(t, v);
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+
+    /// Rows for `statistics/import`: a running sum per hour, and a zero the
+    /// hour before the first so that hour counts too.
+    pub fn rows(&self) -> Vec<Value> {
+        let Some(first) = self.hours.keys().next() else { return vec![] };
+        let mut rows = vec![json!({ "start": (*first - Duration::hours(1)).to_rfc3339(), "sum": 0.0, "state": 0.0 })];
+        let mut sum = 0.0;
+        for (t, v) in &self.hours {
+            sum += v;
+            let s = (sum * 1000.0).round() / 1000.0;
+            rows.push(json!({ "start": t.to_rfc3339(), "sum": s, "state": s }));
+        }
+        rows
+    }
 }

@@ -1,5 +1,5 @@
 # Bygger en binær pr. platform, når et tag som v1.2.3 pushes, og lægger dem
-# sammen med thehome.json på en GitHub-release. TheHome installerer derfra.
+# sammen med homewright.json på en GitHub-release. Homewright installerer derfra.
 name: Release
 
 on:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 env:
-  # navnet på binæren fra Cargo.toml og domænet fra thehome.json
+  # navnet på binæren fra Cargo.toml og domænet fra homewright.json
   BIN: eloverblik_ext
   DOMAIN: eloverblik_ext
 
@@ -66,13 +66,13 @@ jobs:
           } > notes.md
           cat notes.md
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" dist/* thehome.json --clobber
+            gh release upload "$GITHUB_REF_NAME" dist/* homewright.json --clobber
             # keep notes written on github.com, fill in an empty release
             if [ -z "$(gh release view "$GITHUB_REF_NAME" --json body -q .body)" ]; then
               gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
             fi
           else
-            gh release create "$GITHUB_REF_NAME" dist/* thehome.json --title "$GITHUB_REF_NAME" --notes-file notes.md
+            gh release create "$GITHUB_REF_NAME" dist/* homewright.json --title "$GITHUB_REF_NAME" --notes-file notes.md
           fi
         env:
           GH_TOKEN: ${{ github.token }}

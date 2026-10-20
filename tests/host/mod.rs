@@ -1,5 +1,5 @@
-//! Plays TheHome over a pipe: answers the integration's requests the way
-//! TheHome does and records devices, entities, states and issues.
+//! Plays Homewright over a pipe: answers the integration's requests the way
+//! Homewright does and records devices, entities, states, issues and statistics.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -17,6 +17,8 @@ pub struct Recorded {
     pub entities: HashMap<String, (Value, bool)>,
     pub states: HashMap<String, (String, Value)>,
     pub issues: Vec<String>,
+    /// statistic_id -> the last `statistics/import`
+    pub statistics: HashMap<String, Value>,
 }
 
 pub struct FakeHost {
@@ -91,7 +93,7 @@ impl FakeHost {
     }
 }
 
-/// Entity ids the way TheHome builds them for a device's entities, roughly.
+/// Entity ids the way Homewright builds them for a device's entities, roughly.
 fn slug(s: &str) -> String {
     s.to_lowercase().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).collect()
 }
@@ -123,6 +125,10 @@ fn answer(rec: &Mutex<Recorded>, method: &str, p: &Value) -> Value {
         "issue/create" => {
             rec.issues.push(p["issue_id"].as_str().unwrap_or("").to_string());
             Value::Null
+        }
+        "statistics/import" => {
+            rec.statistics.insert(p["statistic_id"].as_str().unwrap().to_string(), p.clone());
+            json!({ "imported": p["stats"].as_array().map_or(0, Vec::len) })
         }
         _ => Value::Null,
     }

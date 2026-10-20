@@ -1,12 +1,12 @@
-//! The parsing and total tests are the same as for TheHome's built-in
-//! eloverblik; the plugin tests play TheHome over a pipe.
+//! The parsing and total tests started as Homewright's built-in eloverblik;
+//! the plugin tests play Homewright over a pipe.
 
 mod host;
 
 use chrono::{NaiveDate, TimeZone, Utc};
 use serde_json::{json, Value};
-use thehome_eloverblik::api::{day_hours, day_total, parse_metering_points, parse_timeseries, Total};
-use thehome_eloverblik::{ApiError, Client, Eloverblik, TZ};
+use thehome_eloverblik::api::{day_hours, day_total, parse_metering_points, parse_timeseries, History, Total};
+use thehome_eloverblik::{statistic_id, ApiError, Client, Eloverblik, TZ};
 use wiremock::matchers::{body_json, header, method, path, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -61,6 +61,34 @@ fn total_only_grows_with_new_complete_days() {
     let next = *s.keys().last().unwrap() + chrono::Duration::hours(1);
     s2.insert(next, 1.0);
     assert_eq!(t.absorb(&s2), 0);
+}
+
+#[test]
+fn history_takes_whole_days_and_corrections() {
+    let ts = parse_timeseries(&fixture("timeseries_hour.json")).unwrap();
+    let s = &ts[MP];
+    let mut h = History::default();
+    assert!(h.absorb(s));
+    assert_eq!(h.hours.len(), 72);
+    assert!(!h.absorb(s), "the same data again changes nothing");
+
+    // A partial day is held back; a correction of a known hour is taken.
+    let mut s2 = s.clone();
+    let last = *s.keys().last().unwrap();
+    s2.insert(last + chrono::Duration::hours(1), 1.0);
+    assert!(!h.absorb(&s2));
+    let first = *s.keys().next().unwrap();
+    s2.insert(first, 9.0);
+    assert!(h.absorb(&s2));
+    assert_eq!(h.hours[&first], 9.0);
+
+    // A zero the hour before the first, then a running sum.
+    let rows = h.rows();
+    assert_eq!(rows.len(), 73);
+    assert_eq!(rows[0], json!({ "start": (first - chrono::Duration::hours(1)).to_rfc3339(), "sum": 0.0, "state": 0.0 }));
+    assert_eq!(rows[1]["sum"], 9.0);
+    let all: f64 = h.hours.values().sum();
+    assert!((rows[72]["sum"].as_f64().unwrap() - all).abs() < 1e-6);
 }
 
 async fn mock_api(server: &MockServer, points: Value) {
@@ -233,6 +261,23 @@ async fn plugin_setup() {
     // The running total is saved in the data folder.
     let saved: Total = serde_json::from_str(&std::fs::read_to_string(dir.path().join(format!("total-e1-{MP}.json"))).unwrap()).unwrap();
     assert!((saved.kwh - expected).abs() < 1e-9);
+
+    // The hours go to a statistic for the Energi page, after a year of
+    // history in chunks of 92 days.
+    let stat = statistic_id(MP);
+    assert_eq!(stat, "eloverblik_ext:571313100000000001");
+    let p = h.rec.lock().unwrap().statistics.get(&stat).cloned().expect("no statistics/import");
+    assert_eq!(p["name"], "Eloverblik Testvej 1, 2100 København Ø");
+    assert_eq!(p["unit_of_measurement"], "kWh");
+    assert_eq!(p["has_sum"], true);
+    let rows = p["stats"].as_array().unwrap();
+    assert_eq!(rows.len(), 73);
+    assert!((rows[72]["sum"].as_f64().unwrap() - expected).abs() < 1e-3);
+    let saved: History = serde_json::from_str(&std::fs::read_to_string(dir.path().join(format!("hours-e1-{MP}.json"))).unwrap()).unwrap();
+    assert!(saved.backfilled);
+    let requests = server.received_requests().await.unwrap();
+    let series = requests.iter().filter(|r| r.url.path().starts_with("/meterdata/gettimeseries/")).count();
+    assert_eq!(series, 1 + 4, "the last week, then 358 days in four requests");
 
     let diag = h.call("diagnostics", json!({ "entry": entry(&server, "refresh-abc") })).await.unwrap();
     assert_eq!(diag["refresh_token"], "**REDACTED**");

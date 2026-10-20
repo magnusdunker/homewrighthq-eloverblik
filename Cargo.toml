@@ -1,9 +1,9 @@
 [package]
 name = "thehome-eloverblik"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "Eloverblik som ekstern integration til TheHome"
+description = "Eloverblik som ekstern integration til Homewright"
 publish = false
 
 [[bin]]
@@ -11,7 +11,7 @@ name = "eloverblik_ext"
 path = "src/main.rs"
 
 [dependencies]
-thehome-plugin = { git = "https://github.com/magnusdunker/thehome-example-integration-rust", rev = "50825762517f5d34318f423b3df8e3f35fa73102" }
+thehome-plugin = { git = "https://github.com/magnusdunker/thehome-example-integration-rust", rev = "a8f05c1859f6689b2a31d2188593eb872408385e" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
