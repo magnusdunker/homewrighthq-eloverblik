@@ -7,7 +7,7 @@ En ekstern integration til [Homewright](https://github.com/magnusdunker/homewrig
 I Homewright: **Indstillinger → Integrationer → Fra GitHub**. Indsæt
 
 ```
-https://github.com/magnusdunker/thehome-eloverblik
+https://github.com/magnusdunker/homewright-eloverblik
 ```
 
 og tryk **Installér**. Tilføj derefter **Eloverblik** under **Tilføj integration**, og indsæt et token fra eloverblik.dk. Det oprettes under **Datadeling** og gælder et år. Har du flere målepunkter, vælger du ét eller dem alle.

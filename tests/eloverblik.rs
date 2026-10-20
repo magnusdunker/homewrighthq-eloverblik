@@ -5,8 +5,8 @@ mod host;
 
 use chrono::{NaiveDate, TimeZone, Utc};
 use serde_json::{json, Value};
-use thehome_eloverblik::api::{day_hours, day_total, parse_metering_points, parse_timeseries, History, Total};
-use thehome_eloverblik::{statistic_id, ApiError, Client, Eloverblik, TZ};
+use homewright_eloverblik::api::{day_hours, day_total, parse_metering_points, parse_timeseries, History, Total};
+use homewright_eloverblik::{statistic_id, ApiError, Client, Eloverblik, TZ};
 use wiremock::matchers::{body_json, header, method, path, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

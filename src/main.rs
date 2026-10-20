@@ -1,3 +1,3 @@
 fn main() {
-    thehome_plugin::run(thehome_eloverblik::Eloverblik::default());
+    thehome_plugin::run(homewright_eloverblik::Eloverblik::default());
 }
