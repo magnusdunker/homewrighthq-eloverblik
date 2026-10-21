@@ -16,7 +16,7 @@ og tryk **Installér**. Tilføj derefter **Eloverblik** under **Tilføj integrat
 
 Hvert målepunkt får en statistik med forbruget time for time, `eloverblik_ext:<målepunkt>`, med navnet **Eloverblik** og adressen. Vælg den under **Energi → Opsæt → Fra nettet**. Så lander forbruget i de timer, det blev brugt i, selv om Eloverblik først leverer det dagen efter.
 
-Første gang henter integrationen det seneste år, så Energi-siden har historik fra starten. Derefter kommer hver ny hel dag med, og retter Eloverblik en time inden for den seneste uge, bliver statistikken rettet.
+Første gang henter integrationen historikken bagud, 92 dage ad gangen, indtil Eloverblik ikke har mere, dog højst fem år. Så kan Energi-siden vise forbruget år for år fra starten. En opsætning fra 0.2, der har hentet ét år, henter selv resten. Derefter kommer hver ny hel dag med, og retter Eloverblik en time inden for den seneste uge, bliver statistikken rettet.
 
 Statistikken kræver en HomewrightHQ, der kender `statistics/import`, altså nyere end 0.5.2. Med en ældre HomewrightHQ virker sensorerne som før, og loggen siger, at statistikken ikke kunne gemmes.
 

@@ -262,8 +262,9 @@ async fn plugin_setup() {
     let saved: Total = serde_json::from_str(&std::fs::read_to_string(dir.path().join(format!("total-e1-{MP}.json"))).unwrap()).unwrap();
     assert!((saved.kwh - expected).abs() < 1e-9);
 
-    // The hours go to a statistic for the Energi page, after a year of
-    // history in chunks of 92 days.
+    // The hours go to a statistic for the Energi page, after history going
+    // back in chunks of 92 days. The fake has data for every chunk, so it
+    // goes all five years back.
     let stat = statistic_id(MP);
     assert_eq!(stat, "eloverblik_ext:571313100000000001");
     let p = h.rec.lock().unwrap().statistics.get(&stat).cloned().expect("no statistics/import");
@@ -274,12 +275,92 @@ async fn plugin_setup() {
     assert_eq!(rows.len(), 73);
     assert!((rows[72]["sum"].as_f64().unwrap() - expected).abs() < 1e-3);
     let saved: History = serde_json::from_str(&std::fs::read_to_string(dir.path().join(format!("hours-e1-{MP}.json"))).unwrap()).unwrap();
-    assert!(saved.backfilled);
+    assert!(saved.complete);
+    let today = chrono::Utc::now().with_timezone(&TZ).date_naive();
+    assert_eq!(saved.fetched_from, Some(today - chrono::Duration::days(5 * 365)));
     let requests = server.received_requests().await.unwrap();
     let series = requests.iter().filter(|r| r.url.path().starts_with("/meterdata/gettimeseries/")).count();
-    assert_eq!(series, 1 + 4, "the last week, then 358 days in four requests");
+    assert_eq!(series, 1 + 20, "the last week, then 1818 days in 20 requests");
 
     let diag = h.call("diagnostics", json!({ "entry": entry(&server, "refresh-abc") })).await.unwrap();
     assert_eq!(diag["refresh_token"], "**REDACTED**");
     h.call("unload_entry", json!({ "entry_id": "e1" })).await.unwrap();
+}
+
+/// Token and metering points as in `mock_api`, and time series from `series`.
+async fn mock_history(server: &MockServer, series: impl Fn(NaiveDate) -> ResponseTemplate + Send + Sync + 'static) {
+    Mock::given(method("GET")).and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(fixture("token.json")))
+        .mount(server).await;
+    Mock::given(method("GET")).and(path("/meteringpoints/meteringpoints"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(fixture("meteringpoints.json")))
+        .mount(server).await;
+    Mock::given(method("POST")).and(path_regex(r"^/meterdata/gettimeseries/"))
+        .respond_with(move |req: &wiremock::Request| {
+            let from = req.url.path().split('/').nth(3).and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()).unwrap();
+            series(from)
+        })
+        .mount(server).await;
+}
+
+/// Runs one setup and returns the saved history and the number of time series requests.
+async fn history_after_setup(server: &MockServer) -> (History, usize) {
+    let dir = tempfile::tempdir().unwrap();
+    let h = host::FakeHost::start(Eloverblik::default());
+    h.call("initialize", json!({ "api_version": 1, "data_dir": dir.path() })).await.unwrap();
+    h.call("setup_entry", json!({ "entry": entry(server, "refresh-abc") })).await.unwrap();
+    let file = dir.path().join(format!("hours-e1-{MP}.json"));
+    for _ in 0..200 {
+        if let Some(saved) = std::fs::read_to_string(&file).ok().and_then(|s| serde_json::from_str::<History>(&s).ok()).filter(|s| s.complete) {
+            let n = server.received_requests().await.unwrap().iter().filter(|r| r.url.path().starts_with("/meterdata/gettimeseries/")).count();
+            h.call("unload_entry", json!({ "entry_id": "e1" })).await.unwrap();
+            return (saved, n);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    panic!("the history was never complete");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn history_stops_where_eloverblik_has_nothing() {
+    let today = chrono::Utc::now().with_timezone(&TZ).date_naive();
+    let week = today - chrono::Duration::days(7);
+
+    // Data for the last week and the chunk before it, then nothing.
+    let server = MockServer::start().await;
+    mock_history(&server, move |from| {
+        if from >= week - chrono::Duration::days(92) {
+            ResponseTemplate::new(200).set_body_json(fixture("timeseries_hour.json"))
+        } else {
+            ResponseTemplate::new(200).set_body_json(json!({ "result": [] }))
+        }
+    })
+    .await;
+    let (saved, n) = history_after_setup(&server).await;
+    assert_eq!(n, 1 + 2, "the last week, one chunk with data, one empty");
+    assert_eq!(saved.fetched_from, Some(week - chrono::Duration::days(2 * 92)));
+    assert_eq!(saved.hours.len(), 72);
+
+    // Eloverblik refuses a period it has no data for.
+    let server = MockServer::start().await;
+    mock_history(&server, move |from| {
+        if from >= week - chrono::Duration::days(92) {
+            ResponseTemplate::new(200).set_body_json(fixture("timeseries_hour.json"))
+        } else {
+            ResponseTemplate::new(400)
+        }
+    })
+    .await;
+    let (saved, n) = history_after_setup(&server).await;
+    assert_eq!(n, 1 + 2);
+    assert_eq!(saved.fetched_from, Some(week - chrono::Duration::days(92)), "the refused chunk is not counted as fetched");
+}
+
+#[test]
+fn history_from_0_2_continues_back_from_its_year() {
+    // A file written by 0.2.x: backfilled, without the new fields.
+    let old: History = serde_json::from_value(json!({ "hours": { "2025-10-20T22:00:00Z": 0.5 }, "backfilled": true })).unwrap();
+    assert!(old.backfilled);
+    assert_eq!(old.fetched_from, None);
+    assert!(!old.complete);
 }

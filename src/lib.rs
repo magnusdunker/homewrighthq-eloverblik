@@ -21,8 +21,8 @@ pub use api::{ApiError, Client, MeteringPoint, BASE_URL, TZ};
 pub const DOMAIN: &str = "eloverblik_ext";
 const POLL: StdDuration = StdDuration::from_secs(3 * 3600);
 const DAYS_BACK: i64 = 7;
-/// History fetched the first time, for the Energi page.
-const BACKFILL_DAYS: i64 = 365;
+/// How far back history is fetched for the Energi page, if Eloverblik has it.
+const BACKFILL_DAYS: i64 = 5 * 365;
 /// Days per request while fetching history.
 const BACKFILL_CHUNK: i64 = 92;
 
@@ -285,30 +285,46 @@ fn save<T: serde::Serialize>(path: &PathBuf, value: &T) -> Result<(), String> {
     std::fs::write(path, bytes).map_err(|e| e.to_string())
 }
 
-/// The year before the last week, for meters that have not had it yet. A
-/// failed request is tried again at the next poll.
-async fn backfill(client: &Client, access: &str, meters: &[Meter], histories: &mut [api::History], today: NaiveDate) -> Result<bool, ApiError> {
-    let ids: Vec<String> = meters.iter().zip(histories.iter()).filter(|(_, h)| !h.backfilled).map(|(m, _)| m.id.clone()).collect();
-    if ids.is_empty() {
-        return Ok(false);
-    }
-    let end = today - Duration::days(DAYS_BACK);
-    let mut from = today - Duration::days(BACKFILL_DAYS);
-    while from < end {
-        let to = (from + Duration::days(BACKFILL_CHUNK)).min(end);
-        let data = client.hourly(access, &ids, from, to).await?;
-        for (m, h) in meters.iter().zip(histories.iter_mut()) {
-            if let Some(series) = data.get(&m.id).filter(|_| ids.contains(&m.id)) {
-                h.absorb(series);
+/// History before the last week, fetched backwards in chunks until a chunk
+/// is empty, Eloverblik refuses the period, or `BACKFILL_DAYS` is reached.
+/// What is fetched is kept when a later chunk fails; the rest is tried
+/// again at the next poll. True if hours were added.
+async fn backfill(client: &Client, access: &str, meter: &Meter, history: &mut api::History, today: NaiveDate) -> Result<bool, ApiError> {
+    let limit = today - Duration::days(BACKFILL_DAYS);
+    // 0.2.x fetched the year before setup
+    let legacy = history.backfilled.then(|| history.hours.keys().next().map(|t| t.with_timezone(&TZ).date_naive())).flatten();
+    let mut to = history.fetched_from.or(legacy).unwrap_or(today - Duration::days(DAYS_BACK));
+    let mut added = false;
+    while !history.complete {
+        if to <= limit {
+            history.complete = true;
+            break;
+        }
+        let from = (to - Duration::days(BACKFILL_CHUNK)).max(limit);
+        let data = match client.hourly(access, std::slice::from_ref(&meter.id), from, to).await {
+            Ok(d) => d,
+            Err(ApiError::Status(s)) if (400..500).contains(&s) && s != 429 => {
+                info!("{}: Eloverblik har intet før {to} (HTTP {s})", meter.id);
+                history.complete = true;
+                break;
+            }
+            Err(e) => return if added { warn!("historikken stoppede ved {to}, prøver igen senere: {e}"); Ok(true) } else { Err(e) },
+        };
+        match data.get(&meter.id).filter(|s| !s.is_empty()) {
+            Some(series) => added |= history.absorb(series),
+            None => {
+                info!("{}: Eloverblik har intet før {to}", meter.id);
+                history.complete = true;
             }
         }
-        from = to;
+        history.fetched_from = Some(from);
+        to = from;
     }
-    for h in histories.iter_mut() {
-        h.backfilled = true;
+    if added {
+        let first = history.hours.keys().next().map(|t| t.with_timezone(&TZ).date_naive());
+        info!("{}: timer fra {} i statistikken", meter.id, first.map(|d| d.to_string()).unwrap_or_default());
     }
-    info!("hentede et års timer for {} målepunkter", ids.len());
-    Ok(true)
+    Ok(added)
 }
 
 async fn update(host: &Host, client: &Client, access: &str, meters: &[Meter], now: DateTime<Utc>, import_all: bool) -> Result<(), ApiError> {
@@ -316,19 +332,20 @@ async fn update(host: &Host, client: &Client, access: &str, meters: &[Meter], no
     let from = today - Duration::days(DAYS_BACK);
     let ids: Vec<String> = meters.iter().map(|m| m.id.clone()).collect();
     let data = client.hourly(access, &ids, from, today).await?;
-    let mut histories: Vec<api::History> = meters.iter().map(|m| load(&m.history)).collect();
-    let backfilled = match backfill(client, access, meters, &mut histories, today).await {
-        Ok(b) => b,
-        Err(ApiError::Auth) => return Err(ApiError::Auth),
-        Err(e) => {
-            warn!("historikken kunne ikke hentes, prøver igen senere: {e}");
-            false
-        }
-    };
-    for (m, history) in meters.iter().zip(histories.iter_mut()) {
+    for m in meters {
+        let loaded: api::History = load(&m.history);
+        let mut history = loaded.clone();
+        let backfilled = match backfill(client, access, m, &mut history, today).await {
+            Ok(b) => b,
+            Err(ApiError::Auth) => return Err(ApiError::Auth),
+            Err(e) => {
+                warn!("historikken kunne ikke hentes, prøver igen senere: {e}");
+                false
+            }
+        };
         let new_hours = data.get(&m.id).is_some_and(|s| history.absorb(s));
-        if new_hours || backfilled {
-            if let Err(e) = save(&m.history, history) {
+        if history != loaded {
+            if let Err(e) = save(&m.history, &history) {
                 warn!("kunne ikke gemme timerne: {e}");
             }
         }

@@ -20,6 +20,9 @@ pub const TZ: chrono_tz::Tz = chrono_tz::Europe::Copenhagen;
 pub enum ApiError {
     #[error("adgangen blev afvist (forkert eller udløbet token)")]
     Auth,
+    /// Any other HTTP error, e.g. 400 for a period Eloverblik has no data for.
+    #[error("Eloverblik: HTTP {0}")]
+    Status(u16),
     #[error("{0}")]
     Other(#[from] anyhow::Error),
 }
@@ -58,7 +61,7 @@ impl Client {
             return Err(ApiError::Auth);
         }
         if !s.is_success() {
-            return Err(anyhow!("Eloverblik: HTTP {s}").into());
+            return Err(ApiError::Status(s.as_u16()));
         }
         Ok(resp.json().await.context("Eloverblik: ugyldig JSON")?)
     }
@@ -227,9 +230,15 @@ pub fn day_total(series: &Series, day: NaiveDate) -> Option<(f64, DayHours)> {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct History {
     pub hours: Series,
-    /// True once the year before the integration was set up is fetched.
+    /// Set by 0.2.x once the year before setup was fetched.
     #[serde(default)]
     pub backfilled: bool,
+    /// The earliest day asked for so far; history goes back from here.
+    #[serde(default)]
+    pub fetched_from: Option<NaiveDate>,
+    /// True when Eloverblik has nothing further back, or the limit is reached.
+    #[serde(default)]
+    pub complete: bool,
 }
 
 impl History {
