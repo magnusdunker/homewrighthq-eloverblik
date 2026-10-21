@@ -1,5 +1,5 @@
 //! Energinet's Eloverblik customer API and the time series math. It started
-//! as Homewright's built-in `eloverblik`.
+//! as HomewrightHQ's built-in `eloverblik`.
 //!
 //! A refresh token (made by the user on eloverblik.dk, valid one year) is
 //! exchanged for a data access token (valid 24 hours), which is used to list
@@ -45,7 +45,7 @@ pub struct Client {
 impl Client {
     pub fn new(base: &str) -> Self {
         let http = reqwest::Client::builder()
-            .user_agent(concat!("Homewright-eloverblik/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("HomewrightHQ-eloverblik/", env!("CARGO_PKG_VERSION")))
             .timeout(StdDuration::from_secs(120))
             .build()
             .unwrap_or_default();

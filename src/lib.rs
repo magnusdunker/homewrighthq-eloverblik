@@ -1,10 +1,10 @@
 //! Meter data from Energinet's Eloverblik as an external integration for
-//! Homewright.
+//! HomewrightHQ.
 //!
 //! Data arrives about a day late, so the sensors describe yesterday and a
 //! running total, and the hours go into a long-term statistic of their own
-//! for the Energi page. `api` started as Homewright's built-in `eloverblik`;
-//! this file connects it to Homewright through the `thehome-plugin` SDK.
+//! for the Energi page. `api` started as HomewrightHQ's built-in `eloverblik`;
+//! this file connects it to HomewrightHQ through the `thehome-plugin` SDK.
 
 pub mod api;
 
@@ -26,7 +26,7 @@ const BACKFILL_DAYS: i64 = 365;
 /// Days per request while fetching history.
 const BACKFILL_CHUNK: i64 = 92;
 
-/// Logging to Homewright's log through stderr.
+/// Logging to HomewrightHQ's log through stderr.
 #[doc(hidden)]
 pub fn emit(level: &str, message: String) {
     thehome_plugin::log(level, message);
@@ -197,7 +197,7 @@ impl Integration for Eloverblik {
         let id = entry_id.clone();
         let task = tokio::spawn(async move {
             let mut access = Some((access, Instant::now()));
-            // The statistics are imported once per start, in case Homewright lost them.
+            // The statistics are imported once per start, in case HomewrightHQ lost them.
             let mut imported = false;
             loop {
                 // Data access tokens live 24 hours; renew after 20.

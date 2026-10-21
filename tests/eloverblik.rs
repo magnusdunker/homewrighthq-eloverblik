@@ -1,5 +1,5 @@
-//! The parsing and total tests started as Homewright's built-in eloverblik;
-//! the plugin tests play Homewright over a pipe.
+//! The parsing and total tests started as HomewrightHQ's built-in eloverblik;
+//! the plugin tests play HomewrightHQ over a pipe.
 
 mod host;
 

@@ -3,7 +3,7 @@ name = "homewright-eloverblik"
 version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "Eloverblik som ekstern integration til Homewright"
+description = "Eloverblik som ekstern integration til HomewrightHQ"
 publish = false
 
 [[bin]]
